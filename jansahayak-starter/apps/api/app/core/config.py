@@ -29,6 +29,9 @@ class Settings:
     default_language: str = os.getenv('DEFAULT_LANGUAGE', 'en-IN')
     default_state: str = os.getenv('DEFAULT_STATE', 'Delhi')
     default_district: str = os.getenv('DEFAULT_DISTRICT', 'New Delhi')
+    twilio_account_sid: str = os.getenv('TWILIO_ACCOUNT_SID', '')
+    twilio_auth_token: str = os.getenv('TWILIO_AUTH_TOKEN', '')
+    twilio_whatsapp_number: str = os.getenv('TWILIO_WHATSAPP_NUMBER', 'whatsapp:+14155238886')
 
 
 @lru_cache

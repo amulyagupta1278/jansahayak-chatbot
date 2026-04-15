@@ -922,6 +922,15 @@ function setupVoiceSupport() {
   });
 }
 
+function updateChannelTheme() {
+  const channel = document.getElementById('channelSelect').value;
+  const frame = document.querySelector('.phone-frame');
+  const header = document.querySelector('.phone-header');
+  if (!frame || !header) return;
+  frame.setAttribute('data-channel', channel);
+  header.textContent = channel === 'whatsapp' ? 'WhatsApp' : 'Conversation';
+}
+
 function wireEvents() {
   document.getElementById('sendBtn').addEventListener('click', () => sendMessage());
   document.getElementById('ttsBtn').addEventListener('click', generateVoiceStub);
@@ -933,12 +942,14 @@ function wireEvents() {
       sendMessage();
     }
   });
+  document.getElementById('channelSelect').addEventListener('change', updateChannelTheme);
 }
 
 function init() {
   loadChats();
   wireEvents();
   setupVoiceSupport();
+  updateChannelTheme();
   renderAll();
 }
 
