@@ -25,6 +25,7 @@ _pending_language_selection: dict[str, bool] = {}
 _pending_initial_message: dict[str, str] = {}
 _pending_feedback: dict[str, dict[str, object]] = {}
 _pending_pincode_input: dict[str, bool] = {}
+_session_reply_audio_enabled: dict[str, bool] = {}
 
 _LANGUAGE_CHOICES: list[dict[str, str]] = [
     {"value": "en-IN", "label": "English"},
@@ -163,6 +164,7 @@ def _clear_session_state(session_id: str) -> None:
     _pending_initial_message.pop(session_id, None)
     _pending_feedback.pop(session_id, None)
     _pending_pincode_input.pop(session_id, None)
+    _session_reply_audio_enabled.pop(session_id, None)
 
     orchestrator.session_language_memory.pop(session_id, None)
     orchestrator.session_history.pop(session_id, None)
@@ -460,24 +462,49 @@ def _handle_whatsapp_user_input(session_id: str, incoming_message: str) -> str:
 def _cleanup_old_audio_files() -> None:
     cutoff = time.time() - _AUDIO_TTL_SECONDS
     try:
-        for audio_file in _PUBLIC_AUDIO_DIR.glob("*.mp3"):
+        for audio_file in _PUBLIC_AUDIO_DIR.glob("*"):
             if audio_file.stat().st_mtime < cutoff:
                 audio_file.unlink(missing_ok=True)
     except Exception as exc:
         logger.warning("audio_cleanup_failed err=%s", str(exc))
 
 
-def _store_audio_and_url(audio_base64: str) -> str | None:
-    """Decode base64 audio, write it to public storage, and return a Twilio-fetchable URL."""
+def _resolve_public_base_url(request: Request) -> str:
     settings = get_settings()
-    base_url = (settings.base_url or "").rstrip("/")
+    configured = (settings.base_url or "").rstrip("/")
+    if configured:
+        return configured
+
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    forwarded_host = request.headers.get("X-Forwarded-Host") or request.headers.get("Host") or request.url.netloc
+    if forwarded_proto and forwarded_host:
+        return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
+    return ""
+
+
+def _detect_audio_extension(audio_bytes: bytes) -> str:
+    if audio_bytes.startswith(b"RIFF"):
+        return "wav"
+    if audio_bytes.startswith(b"ID3") or audio_bytes[:2] == b"\xff\xfb":
+        return "mp3"
+    if audio_bytes.startswith(b"OggS"):
+        return "ogg"
+    if audio_bytes.startswith(b"fLaC"):
+        return "flac"
+    return "bin"
+
+
+def _store_audio_and_url(audio_base64: str, request: Request) -> str | None:
+    """Decode base64 audio, write it to public storage, and return a Twilio-fetchable URL."""
+    base_url = _resolve_public_base_url(request)
     if not base_url:
         logger.warning("audio_url_generation_skipped reason=missing_base_url")
         return None
     try:
         audio_bytes = base64.b64decode(audio_base64)
         _cleanup_old_audio_files()
-        filename = f"{int(time.time() * 1000)}-{_uuid.uuid4().hex}.mp3"
+        extension = _detect_audio_extension(audio_bytes)
+        filename = f"{int(time.time() * 1000)}-{_uuid.uuid4().hex}.{extension}"
         file_path = _PUBLIC_AUDIO_DIR / filename
         file_path.write_bytes(audio_bytes)
         return f"{base_url}/public/audio/{filename}"
@@ -486,19 +513,37 @@ def _store_audio_and_url(audio_base64: str) -> str | None:
         return None
 
 
+def _remember_response_mode(session_id: str, started_with_audio: bool) -> None:
+    _session_reply_audio_enabled.setdefault(session_id, started_with_audio)
+
+
+def _should_send_audio_reply(session_id: str) -> bool:
+    return _session_reply_audio_enabled.get(session_id, False)
+
+
 @router.post("/webhook")
 def webhook(payload: WhatsAppWebhookRequest):
     """Demo JSON endpoint used by the web UI simulation."""
+    _remember_response_mode(payload.from_number, started_with_audio=False)
     reply_text = _handle_whatsapp_user_input(
         session_id=payload.from_number,
         incoming_message=payload.message,
     )
     reply_text = _with_end_session_option(payload.from_number, reply_text)
+    session_language = orchestrator.session_language_memory.get(payload.from_number, "en-IN")
+    if _should_send_audio_reply(payload.from_number) and reply_text:
+        tts = sarvam.text_to_speech(reply_text, session_language)
+    else:
+        tts = {"status": "skipped", "detail": "Audio reply disabled for text-started session", "audio_base64": None}
     return {
         "to": payload.from_number,
         "channel": "whatsapp-mock",
         "reply": reply_text,
+        "audio_status": tts.get("status"),
+        "audio_detail": tts.get("detail"),
+        "audio_base64": tts.get("audio_base64"),
         "meta": {
+            "detected_language": session_language,
             "pending_language_selection": _pending_language_selection.get(payload.from_number, False),
             "pending_follow_up_options": len(_pending_follow_up_options.get(payload.from_number, [])),
         },
@@ -549,9 +594,18 @@ async def twilio_webhook(request: Request):
         media_count = 0
 
     incoming_message = (body or "").strip()
+    started_with_audio = media_count > 0 and media_content_type_0.startswith("audio/")
+    _remember_response_mode(from_number, started_with_audio=started_with_audio)
+    logger.info(
+        "whatsapp_session_mode from=%s session_audio_enabled=%s inbound_audio=%s message_sid=%s",
+        from_number,
+        _should_send_audio_reply(from_number),
+        started_with_audio,
+        message_sid or "-",
+    )
 
     # Twilio WhatsApp voice notes are sent as media with empty Body.
-    if media_count > 0 and media_content_type_0.startswith("audio/"):
+    if started_with_audio:
         # Pass current session language (or None = auto-detect) to Sarvam STT.
         session_lang = orchestrator.session_language_memory.get(from_number)
         stt = sarvam.transcribe_audio_url(
@@ -595,11 +649,11 @@ async def twilio_webhook(request: Request):
     audio_url: str | None = None
     first_part = parts[0] if parts else ""
     is_menu = any(line.strip().startswith(("1.", "2.", "3.")) for line in first_part.splitlines())
-    if first_part and not is_menu:
+    if first_part and not is_menu and _should_send_audio_reply(from_number):
         session_lang = orchestrator.session_language_memory.get(from_number, "en-IN")
         tts = sarvam.text_to_speech(text=first_part, language_code=session_lang)
         if tts.get("status") == "ok" and tts.get("audio_base64"):
-            audio_url = _store_audio_and_url(tts["audio_base64"])
+            audio_url = _store_audio_and_url(tts["audio_base64"], request)
 
     messages_xml = ""
     for idx, part in enumerate(parts):

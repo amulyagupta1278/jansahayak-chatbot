@@ -25,6 +25,9 @@ class ChatResponse(BaseModel):
     profile: Optional[Dict[str, Any]] = None
     follow_up_question: Optional[str] = None
     follow_up_options: List[Dict[str, str]] = Field(default_factory=list)
+    audio_status: Optional[str] = None
+    audio_detail: Optional[str] = None
+    audio_base64: Optional[str] = None
 
 
 class FeedbackRequest(BaseModel):

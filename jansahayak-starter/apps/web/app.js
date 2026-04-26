@@ -437,6 +437,23 @@ function speakText(text, languageCode) {
   return true;
 }
 
+function buildAudioDataUrl(audioBase64) {
+  if (!audioBase64) return null;
+  return `data:audio/wav;base64,${audioBase64}`;
+}
+
+function playAudioBase64(audioBase64) {
+  const dataUrl = buildAudioDataUrl(audioBase64);
+  if (!dataUrl) return false;
+  try {
+    const audio = new Audio(dataUrl);
+    audio.play().catch(() => {});
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function renderChatList() {
   const list = document.getElementById('chatList');
   list.innerHTML = '';
@@ -482,7 +499,8 @@ function createSpeakerButton(chat, message, isMostRecentBot) {
     const latest = getMostRecentAssistantMessage(chat);
     if (!latest) return;
     const parsed = parseAssistantResponse(latest.text);
-    const ok = speakText(parsed.answer, latest.languageCode || languageCode);
+    const ok = (latest.audioStatus === 'ok' && playAudioBase64(latest.audioBase64))
+      || speakText(parsed.answer, latest.languageCode || languageCode);
     if (!ok) {
       appendMessage(uiText('audioUnsupported', languageCode), 'bot', { languageCode });
     }
@@ -824,6 +842,8 @@ function appendMessage(text, type = 'bot', options = {}) {
     feedbackKind: options.feedbackKind || null,
     feedbackFormOpen: false,
     followUpOptions: Array.isArray(options.followUpOptions) ? options.followUpOptions : [],
+    audioBase64: options.audioBase64 || null,
+    audioStatus: options.audioStatus || null,
   });
   chat.updatedAt = nowIso();
   saveChats();
@@ -922,6 +942,8 @@ async function sendMessage(sourceText = null, options = {}) {
       feedbackToken: data.feedback_token || null,
       originalQuestion: message,
       followUpOptions: data.follow_up_options || [],
+      audioBase64: data.audio_base64 || null,
+      audioStatus: data.audio_status || null,
     });
     chat.lastAnswer = answer;
     chat.lastAnswerLanguage = responseLanguage;
@@ -930,6 +952,12 @@ async function sendMessage(sourceText = null, options = {}) {
     chat.updatedAt = nowIso();
     saveChats();
     renderAll();
+
+    const parsed = parseAssistantResponse(answer);
+    const played = data.audio_status === 'ok' && playAudioBase64(data.audio_base64 || null);
+    if (!played) {
+      speakText(parsed.answer, responseLanguage);
+    }
   } catch (err) {
     appendMessage(`${uiText('apiUnreachable', chat.lastAnswerLanguage || 'en-IN')} ${err.message}`, 'bot', { languageCode: chat.lastAnswerLanguage || 'en-IN' });
   }

@@ -1,22 +1,41 @@
+import logging
+
 from fastapi import APIRouter
 
 from ..models.schemas import ChatRequest, ChatResponse, FeedbackRequest
 from ..services.orchestrator import Orchestrator
+from ..services.sarvam_service import SarvamService
 from ..utils.language import normalize_language_code
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 orchestrator = Orchestrator()
+sarvam = SarvamService()
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=ChatResponse)
 def chat(payload: ChatRequest):
-    return orchestrator.answer(
+    result = orchestrator.answer(
         message=payload.message,
         session_id=payload.session_id,
         channel=payload.channel,
         language_code=payload.language_code,
         location_hint=payload.location_hint,
     )
+    try:
+        answer = (result.get("answer") or "").strip()
+        language_code = result.get("language_code") or result.get("session_language") or "en-IN"
+        if answer:
+            tts = sarvam.text_to_speech(answer, language_code)
+            result["audio_status"] = tts.get("status")
+            result["audio_detail"] = tts.get("detail")
+            result["audio_base64"] = tts.get("audio_base64")
+    except Exception as exc:
+        logger.warning("chat_tts_failed session_id=%s err=%s", payload.session_id, str(exc))
+        result["audio_status"] = "error"
+        result["audio_detail"] = "TTS generation failed"
+        result["audio_base64"] = None
+    return result
 
 
 @router.post("/feedback")
