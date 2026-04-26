@@ -24,7 +24,7 @@ function getDefaultApiBase() {
   const configured = normalizeApiBase(window.JANSAHAYAK_CONFIG?.apiBaseUrl);
   if (configured) return configured;
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:8001';
+    return 'http://localhost:8000';
   }
   return '';
 }

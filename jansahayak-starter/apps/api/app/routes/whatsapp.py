@@ -1,6 +1,5 @@
 import base64
 import logging
-import os
 import uuid as _uuid
 
 from fastapi import APIRouter, HTTPException, Request
