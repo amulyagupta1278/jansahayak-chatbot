@@ -1,4 +1,5 @@
 ﻿const STORAGE_KEY = 'jansahayak_chats_v3';
+const API_BASE_STORAGE_KEY = 'jansahayak_api_base';
 
 const state = {
   chats: [],
@@ -10,6 +11,50 @@ const state = {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function normalizeApiBase(base) {
+  return String(base || '').trim().replace(/\/+$/, '');
+}
+
+function getDefaultApiBase() {
+  const configured = normalizeApiBase(window.JANSAHAYAK_CONFIG?.apiBaseUrl);
+  if (configured) return configured;
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  return '';
+}
+
+function resolveInitialApiBase() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = normalizeApiBase(params.get('apiBase'));
+  if (fromQuery) return fromQuery;
+
+  const fromStorage = normalizeApiBase(localStorage.getItem(API_BASE_STORAGE_KEY));
+  if (fromStorage) return fromStorage;
+
+  return getDefaultApiBase();
+}
+
+function getApiBase() {
+  const input = document.getElementById('apiBase');
+  const value = normalizeApiBase(input?.value);
+  if (input && input.value !== value) {
+    input.value = value;
+  }
+  if (value) {
+    localStorage.setItem(API_BASE_STORAGE_KEY, value);
+  } else {
+    localStorage.removeItem(API_BASE_STORAGE_KEY);
+  }
+  return value;
+}
+
+function initializeApiBaseInput() {
+  const input = document.getElementById('apiBase');
+  if (!input) return;
+  input.value = resolveInitialApiBase();
 }
 
 function shortTitle(text) {
@@ -465,7 +510,7 @@ function setMessageFeedbackState(chat, messageTs, patch) {
 }
 
 async function submitMessageFeedback(chat, message, feedback, details = null) {
-  const apiBase = document.getElementById('apiBase').value.trim();
+  const apiBase = getApiBase();
   const languageCode = message.languageCode || chat.lastAnswerLanguage || 'en-IN';
 
   if (!message.feedbackToken || !message.originalQuestion) {
@@ -825,7 +870,7 @@ async function sendMessage(sourceText = null, options = {}) {
   const chat = getActiveChat();
   if (!chat) return;
 
-  const apiBase = document.getElementById('apiBase').value.trim();
+  const apiBase = getApiBase();
   const channel = document.getElementById('channelSelect').value;
   const locationHint = document.getElementById('locationHint').value.trim() || null;
   const input = document.getElementById('messageInput');
@@ -897,7 +942,7 @@ async function generateVoiceStub() {
     return;
   }
 
-  const apiBase = document.getElementById('apiBase').value.trim();
+  const apiBase = getApiBase();
 
   try {
     const response = await fetch(`${apiBase}/voice/tts`, {
@@ -984,7 +1029,7 @@ function setupVoiceSupport() {
 
     const chat = getActiveChat();
     const inferredLanguage = detectSpeechLanguageCode(finalTranscript, chat?.lastAnswerLanguage || getPreferredRecognitionLanguage());
-    const apiBase = document.getElementById('apiBase').value.trim();
+    const apiBase = getApiBase();
 
     try {
       await fetch(`${apiBase}/voice/stt`, {
@@ -1028,6 +1073,8 @@ function wireEvents() {
   document.getElementById('ttsBtn').addEventListener('click', generateVoiceStub);
   document.getElementById('newChatBtn').addEventListener('click', beginNewChat);
   document.getElementById('deleteChatBtn').addEventListener('click', deleteActiveChat);
+  document.getElementById('apiBase').addEventListener('change', getApiBase);
+  document.getElementById('apiBase').addEventListener('blur', getApiBase);
   document.querySelectorAll('.quick-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
       const prompt = btn.getAttribute('data-prompt') || '';
@@ -1045,6 +1092,7 @@ function wireEvents() {
 }
 
 function init() {
+  initializeApiBaseInput();
   loadChats();
   wireEvents();
   setupVoiceSupport();
@@ -1053,4 +1101,3 @@ function init() {
 }
 
 init();
-

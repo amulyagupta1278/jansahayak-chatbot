@@ -99,6 +99,10 @@ Open:
 - Web UI: `http://localhost:5500`
 - API docs (Swagger): `http://localhost:8000/docs`
 
+### Deployment
+- Netlify + Railway guide: `docs/deploy_netlify_railway.md`
+- Vercel + Railway guide: `docs/deploy_vercel_railway.md`
+
 ## 5. Usage
 ### Run the application
 1. Start backend.
