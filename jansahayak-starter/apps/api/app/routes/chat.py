@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from ..models.schemas import ChatRequest, ChatResponse, FeedbackRequest
 from ..services.orchestrator import Orchestrator
+from ..services.request_inspector import inspector
 from ..utils.language import normalize_language_code
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -10,13 +11,21 @@ orchestrator = Orchestrator()
 
 @router.post("", response_model=ChatResponse)
 def chat(payload: ChatRequest):
-    return orchestrator.answer(
+    response = orchestrator.answer(
         message=payload.message,
         session_id=payload.session_id,
         channel=payload.channel,
         language_code=payload.language_code,
         location_hint=payload.location_hint,
     )
+    inspector.record(
+        path="/chat",
+        method="POST",
+        channel=payload.channel or "web",
+        request_data=payload.model_dump(),
+        response_data=response,
+    )
+    return response
 
 
 @router.post("/feedback")
@@ -32,4 +41,12 @@ def feedback(payload: FeedbackRequest):
         location={"state": "Unknown", "district": "Unknown"},
         language_code=retry_language,
     )
-    return {"status": "ok", "improved_answer": improved}
+    response = {"status": "ok", "improved_answer": improved}
+    inspector.record(
+        path="/chat/feedback",
+        method="POST",
+        channel="feedback",
+        request_data=payload.model_dump(),
+        response_data=response,
+    )
+    return response
