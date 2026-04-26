@@ -164,6 +164,22 @@ def inspector_page() -> HTMLResponse:
       color: white;
       font-weight: 700;
     }
+    .copy-btn {
+      width: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 7px 10px;
+      cursor: pointer;
+      background: white;
+      color: var(--text);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+    .copy-btn.copied {
+      background: var(--accent);
+      border-color: var(--brand);
+      color: var(--brand);
+    }
     .grid {
       display: grid;
       grid-template-columns: 380px 1fr;
@@ -217,6 +233,16 @@ def inspector_page() -> HTMLResponse:
       margin: 0 0 8px;
       font-size: 1rem;
     }
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .section-head h3 {
+      margin: 0;
+    }
     pre {
       margin: 0;
       white-space: pre-wrap;
@@ -259,6 +285,19 @@ def inspector_page() -> HTMLResponse:
   <script>
     let events = [];
     let activeId = null;
+
+    async function copyText(value, buttonId) {
+      await navigator.clipboard.writeText(value);
+      const btn = document.getElementById(buttonId);
+      if (!btn) return;
+      const original = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      window.setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1200);
+    }
 
     function statusClass(status) {
       return status >= 400 ? 'status-bad' : 'status-ok';
@@ -319,28 +358,65 @@ def inspector_page() -> HTMLResponse:
         return;
       }
 
+      const fullEventText = JSON.stringify(item, null, 2);
+
       pane.innerHTML = `
         <div class="meta">
           <strong>${item.method} ${item.path}</strong><br />
           ${new Date(item.created_at).toLocaleString()} • ${item.duration_ms} ms • status ${item.response.status_code}
         </div>
         <div class="section">
-          <h3>Request Headers</h3>
+          <div class="section-head">
+            <h3>Request Headers</h3>
+            <button class="copy-btn" id="copyRequestHeadersBtn" type="button">Copy</button>
+          </div>
           <pre>${escapeHtml(JSON.stringify(item.request.headers, null, 2))}</pre>
         </div>
         <div class="section">
-          <h3>Request Body</h3>
+          <div class="section-head">
+            <h3>Request Body</h3>
+            <button class="copy-btn" id="copyRequestBodyBtn" type="button">Copy</button>
+          </div>
           <pre>${escapeHtml(item.request.body || '(empty)')}</pre>
         </div>
         <div class="section">
-          <h3>Response Headers</h3>
+          <div class="section-head">
+            <h3>Response Headers</h3>
+            <button class="copy-btn" id="copyResponseHeadersBtn" type="button">Copy</button>
+          </div>
           <pre>${escapeHtml(JSON.stringify(item.response.headers, null, 2))}</pre>
         </div>
         <div class="section">
-          <h3>Response Body</h3>
+          <div class="section-head">
+            <h3>Response Body</h3>
+            <button class="copy-btn" id="copyResponseBodyBtn" type="button">Copy</button>
+          </div>
           <pre>${escapeHtml(item.response.body || '(empty)')}</pre>
         </div>
+        <div class="section">
+          <div class="section-head">
+            <h3>Full Event</h3>
+            <button class="copy-btn" id="copyFullEventBtn" type="button">Copy</button>
+          </div>
+          <pre>${escapeHtml(fullEventText)}</pre>
+        </div>
       `;
+
+      document.getElementById('copyRequestHeadersBtn')?.addEventListener('click', () => {
+        copyText(JSON.stringify(item.request.headers, null, 2), 'copyRequestHeadersBtn');
+      });
+      document.getElementById('copyRequestBodyBtn')?.addEventListener('click', () => {
+        copyText(item.request.body || '', 'copyRequestBodyBtn');
+      });
+      document.getElementById('copyResponseHeadersBtn')?.addEventListener('click', () => {
+        copyText(JSON.stringify(item.response.headers, null, 2), 'copyResponseHeadersBtn');
+      });
+      document.getElementById('copyResponseBodyBtn')?.addEventListener('click', () => {
+        copyText(item.response.body || '', 'copyResponseBodyBtn');
+      });
+      document.getElementById('copyFullEventBtn')?.addEventListener('click', () => {
+        copyText(fullEventText, 'copyFullEventBtn');
+      });
     }
 
     function escapeHtml(value) {
