@@ -42,6 +42,10 @@ class Orchestrator:
             "Bihar": "बिहार",
             "Maharashtra": "महाराष्ट्र",
             "Uttar Pradesh": "उत्तर प्रदेश",
+            "Puducherry": "पुडुचेरी",
+            "Karaikal": "कारैकाल",
+            "Mahe": "माहे",
+            "Yanam": "यानम",
             "I will type my pincode": "मैं अपना पिनकोड लिखूंगा/लिखूंगी",
             "Farmer schemes": "किसान योजनाएं",
             "Student schemes": "छात्र योजनाएं",
@@ -495,11 +499,10 @@ class Orchestrator:
             return (
                 "To personalize results, please share your location first.",
                 [
-                    {"value": "Delhi", "label": "Delhi"},
-                    {"value": "Karnataka", "label": "Karnataka"},
-                    {"value": "Bihar", "label": "Bihar"},
-                    {"value": "Maharashtra", "label": "Maharashtra"},
-                    {"value": "Uttar Pradesh", "label": "Uttar Pradesh"},
+                    {"value": "Puducherry", "label": "Puducherry"},
+                    {"value": "Karaikal", "label": "Karaikal"},
+                    {"value": "Mahe", "label": "Mahe"},
+                    {"value": "Yanam", "label": "Yanam"},
                     {"value": "I will type my pincode", "label": "I will type my pincode"},
                 ],
             )
@@ -544,6 +547,7 @@ class Orchestrator:
         if re.search(r"\b\d{6}\b", text):
             return True
         known_states = [
+            "puducherry", "pondicherry", "karaikal", "mahe", "yanam",
             "delhi", "karnataka", "bihar", "maharashtra", "uttar pradesh",
             "tamil nadu", "rajasthan", "west bengal", "gujarat", "kerala",
         ]

@@ -48,8 +48,8 @@ class Settings:
     sarvam_enable_preprocessing: bool = os.getenv('SARVAM_ENABLE_PREPROCESSING', 'false').lower() == 'true'
     sarvam_numerals_format: str = os.getenv('SARVAM_NUMERALS_FORMAT', 'native')
     default_language: str = os.getenv('DEFAULT_LANGUAGE', 'en-IN')
-    default_state: str = os.getenv('DEFAULT_STATE', 'Delhi')
-    default_district: str = os.getenv('DEFAULT_DISTRICT', 'New Delhi')
+    default_state: str = os.getenv('DEFAULT_STATE', 'Puducherry')
+    default_district: str = os.getenv('DEFAULT_DISTRICT', 'Puducherry')
     twilio_account_sid: str = os.getenv('TWILIO_ACCOUNT_SID', '')
     twilio_auth_token: str = os.getenv('TWILIO_AUTH_TOKEN', '')
     twilio_whatsapp_number: str = os.getenv('TWILIO_WHATSAPP_NUMBER', 'whatsapp:+14155238886')

@@ -13,6 +13,7 @@ STATE_PORTALS = {
     "West Bengal": "https://wb.gov.in",
     "Gujarat": "https://gujaratindia.gov.in",
     "Kerala": "https://kerala.gov.in",
+    "Puducherry": "https://py.gov.in",
 }
 
 
@@ -46,10 +47,25 @@ def route_grievance(issue: str, state: str, district: str) -> dict:
         department = "District Education Office"
     elif any(token in issue_l for token in ["farmer", "agri", "crop"]):
         department = "District Agriculture Office"
+    elif any(token in issue_l for token in ["certificate", "document", "service", "edistrict", "e-district"]):
+        department = "e-District / Citizen Service Helpdesk"
     else:
         department = "Citizen Service Center"
 
     portal = STATE_PORTALS.get(state, "https://www.india.gov.in")
+    if state == "Puducherry":
+        if any(token in issue_l for token in ["ration", "pds", "food card"]):
+            portal = "https://py.gov.in"
+        elif any(token in issue_l for token in ["certificate", "document", "service", "edistrict", "e-district"]):
+            portal = "https://edistrict.py.gov.in/"
+        elif any(token in issue_l for token in ["student", "scholarship", "education"]):
+            portal = "https://py.gov.in/school-education"
+        elif any(token in issue_l for token in ["farmer", "agri", "crop"]):
+            portal = "https://www.py.gov.in/agriculture-and-farmers-welfare"
+        elif any(token in issue_l for token in ["industry", "entrepreneur", "msme", "business"]):
+            portal = "https://industry.py.gov.in/grievance-redressal-mechanism"
+        else:
+            portal = "https://pgportal.gov.in/"
     return {
         "state": state,
         "district": district,

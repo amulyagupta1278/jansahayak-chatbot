@@ -49,4 +49,12 @@
   {"id":"ladakh-gov","title":"Administration of Ladakh","level":"ut","states":["Ladakh"],"categories":["state-services","schemes"],"url":"https://ladakh.nic.in"},
   {"id":"lakshadweep-gov","title":"Administration of Lakshadweep","level":"ut","states":["Lakshadweep"],"categories":["state-services","schemes"],"url":"https://lakshadweep.gov.in"},
   {"id":"puducherry-gov","title":"Government of Puducherry","level":"ut","states":["Puducherry"],"categories":["state-services","schemes"],"url":"https://py.gov.in"}
+,
+  {"id":"puducherry-edistrict","title":"Puducherry e-District","level":"ut","states":["Puducherry"],"categories":["citizen-services","certificates","online-services"],"url":"https://edistrict.py.gov.in/"},
+  {"id":"puducherry-agriculture","title":"Puducherry Agriculture and Farmers Welfare","level":"ut","states":["Puducherry"],"categories":["agriculture","farmers","department-services"],"url":"https://www.py.gov.in/agriculture-and-farmers-welfare"},
+  {"id":"puducherry-school-education","title":"Puducherry School Education","level":"ut","states":["Puducherry"],"categories":["education","students","welfare"],"url":"https://py.gov.in/school-education"},
+  {"id":"puducherry-dic","title":"District Industries Centre, Puducherry","level":"ut","states":["Puducherry"],"categories":["entrepreneurship","industries","self-employment"],"url":"https://dic.py.gov.in/about-us"},
+  {"id":"puducherry-industries-grievance","title":"Puducherry Industries Grievance Redressal Mechanism","level":"ut","states":["Puducherry"],"categories":["entrepreneurship","grievance","industries"],"url":"https://industry.py.gov.in/grievance-redressal-mechanism"},
+  {"id":"puducherry-transport-services","title":"Puducherry Transport Department Services","level":"ut","states":["Puducherry"],"categories":["transport","vehicle","licence"],"url":"https://transport.py.gov.in/Services"},
+  {"id":"puducherry-petition-monitoring","title":"Puducherry Petition Monitoring System","level":"ut","states":["Puducherry"],"categories":["grievance","petitions","complaints"],"url":"https://gms-drdm.py.gov.in/"}
 ]

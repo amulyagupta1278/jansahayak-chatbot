@@ -18,6 +18,10 @@ PINCODE_MAP = {
     "302001": {"state": "Rajasthan", "district": "Jaipur"},
     "682001": {"state": "Kerala", "district": "Ernakulam"},
     "380001": {"state": "Gujarat", "district": "Ahmedabad"},
+    "605001": {"state": "Puducherry", "district": "Puducherry"},
+    "609602": {"state": "Puducherry", "district": "Karaikal"},
+    "673310": {"state": "Puducherry", "district": "Mahe"},
+    "533464": {"state": "Puducherry", "district": "Yanam"},
 }
 
 STATE_DEFAULT_DISTRICT = {
@@ -50,6 +54,7 @@ STATE_DEFAULT_DISTRICT = {
     "Uttar Pradesh": "Lucknow",
     "Uttarakhand": "Dehradun",
     "West Bengal": "Kolkata",
+    "Puducherry": "Puducherry",
 }
 
 KEYWORD_MAP = {
@@ -79,6 +84,11 @@ KEYWORD_MAP = {
     "gujarat": {"state": "Gujarat", "district": "Ahmedabad"},
     "thiruvananthapuram": {"state": "Kerala", "district": "Thiruvananthapuram"},
     "kerala": {"state": "Kerala", "district": "Thiruvananthapuram"},
+    "puducherry": {"state": "Puducherry", "district": "Puducherry"},
+    "pondicherry": {"state": "Puducherry", "district": "Puducherry"},
+    "karaikal": {"state": "Puducherry", "district": "Karaikal"},
+    "mahe": {"state": "Puducherry", "district": "Mahe"},
+    "yanam": {"state": "Puducherry", "district": "Yanam"},
 }
 
 
