@@ -1,4 +1,5 @@
 import base64
+import logging
 import uuid as _uuid
 
 from fastapi import APIRouter, HTTPException, Request
@@ -13,7 +14,8 @@ from ..services.sarvam_service import SarvamService
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 orchestrator = Orchestrator()
 sarvam = SarvamService()
-_audio_store: dict[str, bytes] = {}  # id -> raw WAV bytes
+logger = logging.getLogger(__name__)
+_audio_store: dict[str, dict[str, str | bytes]] = {}  # id -> audio payload and metadata
 _pending_follow_up_options: dict[str, list[dict[str, str]]] = {}
 _pending_language_selection: dict[str, bool] = {}
 _pending_initial_message: dict[str, str] = {}
@@ -465,15 +467,19 @@ def _public_base_url() -> str | None:
     return None
 
 
-def _store_audio_and_url(audio_base64: str) -> str | None:
-    """Decode base64 WAV, store it, return public URL or None if ngrok unavailable."""
+def _store_audio_and_url(audio_base64: str, mime_type: str | None = None) -> str | None:
+    """Decode base64 audio, store it, return public URL or None if ngrok unavailable."""
     base_url = _public_base_url()
     if not base_url:
         return None
     try:
         audio_bytes = base64.b64decode(audio_base64)
         audio_id = _uuid.uuid4().hex
-        _audio_store[audio_id] = audio_bytes
+        resolved_mime_type = mime_type or sarvam.guess_audio_mime_type(audio_bytes) or "application/octet-stream"
+        _audio_store[audio_id] = {
+            "audio_bytes": audio_bytes,
+            "mime_type": resolved_mime_type,
+        }
         return f"{base_url}/whatsapp/audio/{audio_id}"
     except Exception:
         return None
@@ -482,10 +488,13 @@ def _store_audio_and_url(audio_base64: str) -> str | None:
 @router.get("/audio/{audio_id}")
 def serve_audio(audio_id: str):
     """Serve a generated TTS audio file for Twilio Media."""
-    audio_bytes = _audio_store.pop(audio_id, None)
-    if audio_bytes is None:
+    audio_entry = _audio_store.get(audio_id)
+    if audio_entry is None:
         raise HTTPException(status_code=404, detail="Audio not found")
-    return Response(content=audio_bytes, media_type="audio/wav")
+    return Response(
+        content=audio_entry["audio_bytes"],
+        media_type=str(audio_entry.get("mime_type") or "application/octet-stream"),
+    )
 
 
 @router.post("/webhook")
@@ -556,6 +565,13 @@ async def twilio_webhook(request: Request):
     if media_count > 0 and media_content_type_0.startswith("audio/"):
         # Pass current session language (or None = auto-detect) to Sarvam STT.
         session_lang = orchestrator.session_language_memory.get(from_number)
+        logger.info(
+            "whatsapp_voice_note_received from=%s sid=%s mime=%s session_lang=%s",
+            from_number,
+            message_sid,
+            media_content_type_0 or "unknown",
+            session_lang or "auto",
+        )
         stt = sarvam.transcribe_audio_url(
             media_url=media_url_0,
             mime_type=media_content_type_0 or "audio/ogg",
@@ -565,6 +581,16 @@ async def twilio_webhook(request: Request):
         )
         transcript = (stt.get("transcript") or "").strip()
         detected_lang = stt.get("language_code")
+        logger.info(
+            "whatsapp_voice_note_stt from=%s sid=%s provider=%s status=%s detected_lang=%s detail=%s transcript_len=%s",
+            from_number,
+            message_sid,
+            stt.get("provider"),
+            stt.get("status"),
+            detected_lang,
+            stt.get("detail"),
+            len(transcript),
+        )
 
         # If Sarvam detected a language and session has none yet, set it — skips language menu.
         if detected_lang and from_number not in orchestrator.session_language_memory:
@@ -600,8 +626,19 @@ async def twilio_webhook(request: Request):
     if first_part and not is_menu:
         session_lang = orchestrator.session_language_memory.get(from_number, "en-IN")
         tts = sarvam.text_to_speech(text=first_part, language_code=session_lang)
+        logger.info(
+            "whatsapp_reply_tts from=%s sid=%s status=%s detail=%s language=%s",
+            from_number,
+            message_sid,
+            tts.get("status"),
+            tts.get("detail"),
+            session_lang,
+        )
         if tts.get("status") == "ok" and tts.get("audio_base64"):
-            audio_url = _store_audio_and_url(tts["audio_base64"])
+            audio_url = _store_audio_and_url(
+                tts["audio_base64"],
+                mime_type=tts.get("mime_type"),
+            )
 
     messages_xml = ""
     for idx, part in enumerate(parts):
