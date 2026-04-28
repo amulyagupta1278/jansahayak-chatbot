@@ -36,7 +36,7 @@ app.mount("/public", StaticFiles(directory=public_dir), name="public")
 @app.middleware("http")
 async def capture_requests(request: Request, call_next):
     path = request.url.path
-    if path.startswith("/debug/inspector") or path.startswith("/public/audio/"):
+    if path.startswith("/debug/inspector") or path.startswith("/public/audio/") or path == "/favicon.ico":
         return await call_next(request)
 
     started_at = time.perf_counter()
@@ -70,6 +70,11 @@ async def capture_requests(request: Request, call_next):
         headers=dict(response.headers),
         media_type=response.media_type,
     )
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
 
 
 @app.get("/")
